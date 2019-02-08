@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>commentList</title>
+    <script type="text/javascript">
+
+    
+    function deleteComment(postIdx, commentIdx){
+    		console.log("포스트 인덱스 "+postIdx+"지우려는 코멘트 번호 "+commentIdx);
+    		
+    		 $.ajax({
+                 type: 'DELETE',
+                 url: 'http://localhost:8080/bbs/' + postIdx +'/' + commentIdx,
+                 headers: {'token': localStorage.getItem('currentUserToken')},
+                 success: function (data) {
+                    if(data['result']=='fail'){ alert(data['message']); }
+                     console.log("delete complete");
+                     showDetail(postIdx);
+                 },
+                 error: function (data) {
+                    errorHandling(data);
+                 }
+             });
+    		
+    }
+
+
+    </script>
+</head>
+<body>
+
+<div id="comments"></div>
+
+
+</body>
+</html>

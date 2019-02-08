@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>userList</title>
+    <script type="text/javascript">
+
+
+        function searchUser(currentUserSearchPage){
+            console.log("검색어 "+$('#userSearchKeyword').val());
+            var keyword =  JSON.stringify({"email" : $('#userSearchKeyword').val()});
+            console.log("보내는 데이터 "+keyword);
+
+            $.ajax({
+                type: 'post',//get으로 보내려면 uri 인코딩 해야해서 그냥 post로
+                url: 'http://localhost:8080/admin/search?page='+currentUserSearchPage+'&elementsNumberForOnePage='+postNumPerPage,
+                headers: {'token': localStorage.getItem('currentUserToken')},
+                contentType: 'application/json; charset=utf-8',
+                data:keyword,
+                success: function (data) {
+                    console.log("유저 리스트를 가져옴..."+JSON.stringify(data));
+                    var userListObj = "";
+                    $(data).each(function (num, ele) {
+
+                        userListObj +='<tr><td >'
+                            +ele.email+'</td><td>'
+                            +ele.name+'</td><td>'
+                            +ele.accountCreatedTime+'</td>'
+                            +'<td style="cursor:pointer" onclick="javascript:changeUserAuth(\''+ele.email+'\')">'
+                            +ele.auth+'&nbsp;&nbsp; <p class="glyphicon glyphicon-eye-open">[권한변경]</p></td>'
+                            +'<td style="cursor:pointer" onclick="javascript:changeUserStatus(\''+ele.email+'\')" > '
+                            +ele.status +'&nbsp;&nbsp; <p class="glyphicon glyphicon-refresh">[상태변경]</p></td>';
+                         
+                        });
+
+                    $('#userListTable tbody').eq(1).html(userListObj);
+
+                    paginate(currentUserSearchPage, "javascript:searchUser", data, '#userListPaging ul', Object.keys(data['users']).length); //검색은 서버에서 totalUser를 안넘겨서 페이지네이션 깨질것..
+
+
+                },
+                error: function (data) {
+                    errorHandling(data);
+                },
+                complete: function (data) {
+                    $('#userSearchKeyword').val('');
+                }
+            });
+
+         }
+
+        function toUserList(currentAdminPage){
+
+           $.ajax({
+                type: 'Get',
+                url: 'http://localhost:8080/admin?page='+currentAdminPage+'&elementsNumberForOnePage='+postNumPerPage,
+                headers: {'token': localStorage.getItem('currentUserToken')},
+                success: function (data) {
+                    console.log("관리자 유저 리스트를 가져오는데 성공."+JSON.stringify(data));
+
+                    $('#adminPage').show();
+                    $('#userSearchInput').show();
+                    $('#postSearchInput').hide();
+                    $('#bbsRelated').hide();
+                    $('#myPage').hide();
+                    $('#navBbs').removeAttr("class")
+                    $('#navMyPage').removeAttr("class")
+                    $('#navUsers').attr('class', 'active');
+
+                    var userListObj = "";
+                    $(data['content']).each(function (num, ele) {
+
+                                userListObj +='<tr><td >'
+                                    +ele.email+'</td><td>'
+                                    +ele.name+'</td><td>'
+                                    +ele.accountCreatedTime+'</td>';
+
+                                if(localStorage.getItem("currentUserEmail") != ele.email){
+
+                                    userListObj += '<td style="cursor:pointer" onclick="javascript:changeUserState(\''+ele.email+'\', \'AUTH\')">'
+                                        +ele.auth+'&nbsp;&nbsp; <p class="glyphicon glyphicon-eye-open">[권한변경]</p></td>'
+                                        +'<td style="cursor:pointer" onclick="javascript:changeUserState(\''+ele.email+'\', \'STATUS\')" > '
+                                        +ele.status +'&nbsp;&nbsp; <p class="glyphicon glyphicon-refresh">[상태변경]</p></td>';
+                                } else{
+                                    userListObj += '<td>' +ele.auth+'&nbsp;&nbsp; <p class="glyphicon glyphicon-eye-open"></p></td>'
+                                        +'<td> ' +ele.status +'&nbsp;&nbsp; <p class="glyphicon glyphicon-refresh"></p></td>';
+                                }
+                       });
+
+                        $('#userListTable tbody').eq(1).html(userListObj);
+
+                          paginate(currentAdminPage, "javascript:toUserList", data, '#userListPaging ul', data['totalElements']);
+                },
+                error: function (data) {
+                    errorHandling(data);
+                },
+              	complete: function (data) {
+                }
+            });
+
+        } //totalUserList ends
+
+
+        function changeUserState(userEmail, stateCategory) {
+            var send =  JSON.stringify({
+                "category":stateCategory,
+                "keyword" : userEmail
+            });
+            console.log("상태 변경 데이터 "+send);
+            $.ajax({
+                type: 'Put',
+                url:  'http://localhost:8080/admin/'+userEmail,
+                data: send,
+                headers: {'token': localStorage.getItem('currentUserToken')},
+                contentType: 'application/json; charset=utf-8',
+                success: function (data) {
+                    if(data['result']=='fail'){
+                        alert("변경 실패 : "+data['message']);
+                    }else{
+                        console.log("변경되었습니다.");
+                    }
+
+                    toUserList(1);
+                },
+                error: function(data){
+                    errorHandling(data);
+                }
+
+            });
+        }
+
+
+
+
+
+
+    </script>
+</head>
+<body>
+
+    <div id="userList">
+        <table id="userListTable" class="table">
+            <tr>
+                <th>유저</th><th>이름</th><th>생성일</th><th>권한</th><th>상태</th>
+            </tr>
+            <tbody></tbody>
+        </table>
+
+
+        <div id="userListPaging" class="text-center">
+            <ul  class="pagination"></ul>
+        </div>
+
+    </div>
+</body>
+</html>

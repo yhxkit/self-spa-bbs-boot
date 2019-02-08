@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>PostWrite</title>
+
+    <script type="text/javascript">
+        $(document).on('click', '#postWriteForm #postWriteButton', function (event) {
+            event.preventDefault();
+            $('#postWriteError').html('');
+            var title = $('#postWriteForm #postTitle').val();
+            var textareaValue = CKEDITOR.instances.postContent.getData();
+            //textarea의 id 값을 이용해서 ckeditor의 메서드를 사용해야 함
+
+            if(title.trim() == '' || textareaValue.trim() ==''){
+
+                $('#postWriteError').html("<p style='color: red'>제목과 내용을 비워둘 수 없습니다</p>");
+
+            }else{
+                var writeData=JSON.stringify({
+                    'title': title,
+                    'postContent': textareaValue,
+                    'postWriter': localStorage.getItem('currentUserEmail')
+
+                });
+
+                console.log("보내는 데이터 "+writeData);
+                console.log("리퀘스트헤더에 셋할 토큰.. "+localStorage.getItem('currentUserToken'));
+
+                writePost(writeData);
+            }
+
+
+        });
+
+        function writePost(writeData){
+
+            $.ajax({
+                url: 'http://localhost:8080/bbs/write',
+                type: 'post',
+                headers: {'token': localStorage.getItem('currentUserToken')},
+                data: writeData,
+                contentType: 'application/json; charset=utf-8',
+                success: function(data){
+                    console.log(JSON.stringify(data));
+
+                    if(data['result']=='fail'){
+                        $('#postWriteError').html("<p style='color: red'>"+data['message']+"</p>");
+                    }else {
+                        document.getElementById('postWrite').style.display = "none";
+                        document.getElementById('bbs').style.display = 'block';
+                        window.location.reload();
+                    }
+
+                },
+                error: function(data){
+                    errorHandling(data);
+                }
+            });
+
+
+        }
+    </script>
+</head>
+<body>
+
+<form id="postWriteForm">
+    <div id="postWriteError"></div>
+    <label>제목</label>
+    <input type="text" id="postTitle" name="title" size="80%"/>
+    <textarea name="postContent" id="postContent"></textarea>
+    <button type="submit" id="postWriteButton">등록</button>
+</form>
+
+</body>
+</html>

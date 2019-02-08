@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <style>
+
+
+    </style>
+    <script>
+
+    
+
+    //포스트 수정
+    var showPostEdit=true;
+    $(document).on('click',  '#editPost', function (event) {
+        event.preventDefault();
+        if (showPostEdit) {
+            $('#postDetail input').attr('type', 'text');
+            $('#postDetail div').show();
+            $('.detail').hide();
+        } else {
+            $('#postDetail input').attr('type', 'hidden');
+            $('#postDetail div').hide();
+            $('.detail').show();
+            editPost();
+        }
+        showPostEdit = !showPostEdit;
+    });
+
+
+    function editPost() {
+        var editingPostIdx = $('#postDetail #postIdxSpan').val();
+        var editingPostData = JSON.stringify({
+            'postIdx': editingPostIdx,
+            'title': $('#postDetail #title').val(),
+            'postContent': CKEDITOR.instances.postEditContent.getData()
+        });
+        console.log("수정된 포스트 "+editingPostData);
+
+        $.ajax({
+            url: 'http://localhost:8080/bbs/'+ editingPostIdx,
+            type: 'put',
+            headers: {'token': localStorage.getItem('currentUserToken')},
+            data: editingPostData,
+            contentType: 'application/json; charset=utf-8',
+            success: function(data){
+                if(data['result']=='fail'){ alert(data['message']); }
+               showDetail(editingPostIdx);
+            },
+            error: function(data){
+        	   errorHandling(data);
+            }
+        });
+
+    }
+    
+    
+    
+    
+    
+    function showDetail(idx){
+
+        $('#detailPage').show();
+        $.getJSON('http://localhost:8080/bbs/' + idx, function (data) {
+            console.log(idx+'번의 데이터(코멘트 포함)'+JSON.stringify(data));
+
+            if(data[0]['result']=='fail'){
+                alert(data[0]['message']); window.location.reload();
+            }else {
+
+                //코멘트 작성칸도 리뉴..
+                CKEDITOR.instances['commentContent'].setData('');
+                $('#commentEditButton').hide();
+                $('#stopEditingComment').hide();
+                $('#commentWriteButton').show();
+
+
+                if (currentUserEmail == data[0]['data'].postWriter.email) { //로그인한 사람이 해당글의 작성자일때만 수정 삭제 띄움
+                    $('#writerOnly').show();
+                } else {
+                    $('#writerOnly').hide();
+                }
+
+                //detail
+                $('#postDetail #postIdxSpan').val(data[0]['data'].postIdx);
+                $('#postDetail .detail').eq(0).text(data[0]['data'].title);
+                $('#postDetail .detail').eq(2).text(data[0]['data'].postWriter.email + "(" + data[0]['data'].postWriter.name + ")");
+                $('#postDetail .detail').eq(4).text(data[0]['data'].postTime);
+                $('#postDetail #detailForPostContent').html(data[0]['data'].postContent);
+
+                //edit
+                $('#postDetail input').eq(2).val(data[0]['data'].postTime);
+                $('#postDetail input').eq(0).val(data[0]['data'].title);
+                $('#postDetail input').eq(1).val(data[0]['data'].postWriter.email);
+                $('#postDetail input').eq(2).val(data[0]['data'].postTime);
+                CKEDITOR.instances['postEditContent'].setData(data[0]['data'].postContent);
+
+
+                //코멘트
+                var commentObj = '<div class="well  well-sm">총 ' + data[1].length + '개의 코멘트가 있습니다..</div>';
+
+                $(data[1]).each(function (num, ele) {
+                    console.log(ele.commentContent + "");
+
+                    commentObj += ' <span hidden >' + ele.commentIdx + '</span>'
+                        + '  <span>' + ele.commentWriter.email + '</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'
+                        + '<span>' + ele.commentTime + '</span>';
+
+
+                    if (currentUserEmail == ele.commentWriter.email) { //로그인한 사람이 해당글의 작성자일때만 수정 삭제 띄움
+                        commentObj += '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a style="cursor:pointer" onclick="javascript:toEditComment(' + data[0]['data'].postIdx + ', ' + ele.commentIdx + ')" class="editCommentsClass glyphicon glyphicon-pencil" title="' + ele.commentIdx + '">수정</a>'
+                            + '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <a onclick="javascript:deleteComment(' + data[0]['data'].postIdx + ', ' + ele.commentIdx + ')" style="cursor:pointer" class="glyphicon glyphicon-remove">삭제</a> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;';
+                    }
+
+
+                    commentObj += '<div>' + ele.commentContent + '</div>';
+
+                }); //코멘트 리스트 정보 가져오기 end
+                $('#comments').html(commentObj);
+            }
+
+        });
+
+    }
+    
+    
+        $(document).on('click', '#deletePost', function (event) {
+            event.preventDefault();
+            $.ajax({
+                type: 'DELETE',
+                url: 'http://localhost:8080/bbs/'+$('#postDetail #postIdxSpan').val(),
+                headers: {'token': localStorage.getItem('currentUserToken')},
+                success: function (data) {
+                    if(data['result']=='fail'){
+                        alert("삭제 실패 : "+data['message']);
+                    }else {
+
+                        alert("삭제되었습니다");
+                    }
+                    window.location.reload();
+                },
+                error: function (data) {
+                	errorHandling(data);
+                },
+                complete: function (data) {
+                }
+            });
+        });
+
+    </script>
+</head>
+<body>
+
+<div id="postDetail">
+        <span id="postIdxSpan" hidden></span>
+      
+	       	 <h4> 
+		        <span class="detail"></span>
+	     	  </h4>
+	        <input type="hidden" id="title" name="title"/>
+
+ 			<label  class="detail">작성자 : </label>
+		   	 <span id="postWriterSpan" class="detail"></span>
+		    <br/>
+		
+		    <label  class="detail">작성일 : </label>
+		    <span class="detail"></span>
+		    <br/> <br/>
+
+    <div class="detail" id="detailForPostContent"></div>
+    <div id="editTextArea" hidden>
+        <textarea  name="postContent" id="postEditContent"></textarea>
+   </div>
+
+    <br/>
+</div>
+    <div id="writerOnly" class=" text-right">
+        <a style="cursor:pointer;" class="glyphicon glyphicon-pencil" id="deletePost">글삭제</a>
+        <a style="cursor:pointer;" class="glyphicon glyphicon-trash" id="editPost">글수정</a>
+    </div>
+
+</body>
+</html>

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>LoginForm</title>
+
+    <script type="text/javascript">
+
+        $(document).on('click', '#loginForm #loginButton', function (event) {
+            event.preventDefault();
+            var email = $('#loginEmail').val();
+            var password = $('#loginPassword').val();
+            console.log(email, password);
+
+            if(email.trim() == "" || password.trim() == ""){
+                $('#loginError').html("<p style='color: red'>이메일과 패스워드를 입력해주세요</p>");
+            }else{
+               signIn(email);
+            }
+
+        });
+
+        function signIn(email){
+            var loginData= $('#loginForm').serialize();
+
+            console.log(loginData);
+            $.post('login', loginData, function (data) {
+                console.log("로그인 결과 "+JSON.stringify(data));
+                if(data['result']=='fail'){
+                    $('#loginError').html("<p style='color: red'>"+data['message']+"</p>");
+                }else{
+                    console.log(email+" 로그인 성공 ");
+                        localStorage.removeItem("currentUserToken");
+                        localStorage.removeItem("currentUserEmail");
+                        localStorage.removeItem("currentUserScope");
+                        localStorage.setItem("currentUserToken", data['data']['token']);
+                        localStorage.setItem("currentUserEmail", data['data']['user']['email']);
+
+
+                        var parsingStr =localStorage.getItem("currentUserToken");
+
+                        var startTo = parsingStr.indexOf(".", 0);
+                        var removeHeader = parsingStr.substring((startTo+1));
+                        var endfrom = removeHeader.indexOf(".", 0);
+                        var result = removeHeader.substring(0, endfrom);
+                        console.log("얻은 토큰"+result);
+                        var decodeScope = window.atob(result);
+                        decodeScope = JSON.parse(decodeScope);
+                        var userScope = decodeScope.scope;
+                        var userStatus = decodeScope.status;
+
+
+                        localStorage.setItem("currentUserScope", userScope);
+                        localStorage.setItem("currentUserStatus", userStatus);
+
+
+                      window.location.reload();
+                }
+
+            }).done(function (data, textStatus, request) {
+            }).fail(function (data) {
+            	errorHandling(data);
+            });
+        }
+
+
+
+    </script>
+</head>
+<body>
+
+<div id="loginDiv">
+
+    <form id="loginForm"  class="navbar-form">
+        <input type="email" id="loginEmail" name="email" placeholder="이메일">
+        <br/>
+        <input type="password" id="loginPassword" name="password" placeholder="비번">
+        <br/>
+        <button id="loginButton" type="submit">로그인 하기 </button>
+         <button type="button" id="toJoinForm" >회원 가입</button>
+    </form>
+    <div id="loginError"></div>
+</div>
+   
+
+</body>
+</html>

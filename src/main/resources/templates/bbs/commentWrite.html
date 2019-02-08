@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>CommentWrite</title>
+    <script type="text/javascript">
+
+    $(document).on('click', '#commentWriteButton', function(event){
+    		event.preventDefault();
+    		console.log("comment registrate~~");
+    		
+    		var commentData = CKEDITOR.instances.commentContent.getData();
+    		var commentWriteData =JSON.stringify({
+    			'commentWriterEmail': localStorage.getItem('currentUserEmail'),
+    			'commentContent': commentData	
+    		});
+    		
+    		writeComment(commentWriteData);
+    		
+    });
+    
+    function writeComment(commentWriteData){
+   	 	
+   	 	var currentPostIdx =  $('#postDetail #postIdxSpan').val();
+
+   	     console.log("sending data "+commentWriteData+" and currentPostIdx is "+currentPostIdx);
+   	 	
+        $.ajax({
+            url: 'http://localhost:8080/bbs/'+currentPostIdx+'/comment',
+            type: 'post',
+            headers: {'token': localStorage.getItem('currentUserToken')},
+            data: commentWriteData,
+            contentType: 'application/json; charset=utf-8',
+            success: function(data){
+                console.log("등록 성공 : "+data);
+                showDetail(currentPostIdx);
+                CKEDITOR.instances['commentContent'].setData('');
+
+            },
+            error: function(data){
+                alert(" 등록 실패 : "+data['responseJSON']['message']);
+                window.location.reload();
+            }
+        });
+
+   	 	
+    }
+    
+	//코멘트 수정
+	function toEditComment(currentPostIdx, commentIdx){
+		var target = event.target ? event.target : event.srcElement;
+		var commentContent = target.nextElementSibling.nextElementSibling.innerHTML;
+		CKEDITOR.instances['commentContent'].setData(commentContent);
+		$('#commentEditButton').attr('data-currentPostIdx', currentPostIdx);
+		$('#commentEditButton').attr('data-commentIdx', commentIdx);
+		//data()로는 셋이 안됨
+/* 		$('#commentEditButton').data('currentPostIdx', currentPostIdx);
+		$('#commentEditButton').data('commentIdx', commentIdx); */
+		$('#commentEditButton').show();
+		$('#stopEditingComment').show();
+		$('#commentWriteButton').hide();
+	}
+	
+
+
+	$(document).on('click', '#commentEditButton', function(event){
+		event.preventDefault();	
+		
+		 var currentPostIdx=this.dataset['currentpostidx'];// ..?? 데이터 키들이 전부 소문자로 변경됨
+		 var commentIdx=this.dataset['commentidx'];
+		 
+		 console.log(currentPostIdx+":"+commentIdx);
+   		 
+		 var editedComment = CKEDITOR.instances['commentContent'].getData();
+		 var commentEditData = JSON.stringify({
+			 'commentContent': editedComment,
+			 'commentIdx': commentIdx
+		 });
+		 
+		 
+		 
+		 	$.ajax({
+				  url: 'http://localhost:8080/bbs/'+currentPostIdx+'/'+commentIdx,
+		            type: 'put',
+		            headers: {'token': localStorage.getItem('currentUserToken')},
+		            data: commentEditData,
+		            contentType: 'application/json; charset=utf-8',
+		            success: function(data){
+		                console.log("코멘트 수정.."+JSON.stringify(data));
+		                if(data['result']=='fail'){ alert(data['message']); }
+		                showDetail(currentPostIdx);
+		                CKEDITOR.instances['commentContent'].setData('');
+		        		$('#commentEditButton').hide();
+		        		$('#stopEditingComment').hide();
+		        		$('#commentWriteButton').show();
+		            },
+		            error: function(data){
+		            	errorHandling(data);
+		            }
+			});
+		  
+	}); 
+	
+	
+	$(document).on('click', '#stopEditingComment', function(event){
+		event.preventDefault();	
+		   CKEDITOR.instances['commentContent'].setData('');
+			$('#commentEditButton').hide();
+    		$('#stopEditingComment').hide();
+    		$('#commentWriteButton').show();
+	});
+	
+	
+	
+
+    </script>
+
+</head>
+<body>
+<form id="conmmentWriteForm">
+    <textarea name="commentContent" id="commentContent" ></textarea>
+    <button type="submit" id="commentWriteButton">코멘트 등록</button>
+</form>
+    <button type="button" id="commentEditButton" hidden>코멘트 수정</button>
+    <button type="button" id="stopEditingComment" hidden>돌아가기</button>
+</body>
+</html>

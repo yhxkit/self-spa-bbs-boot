@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Pilot</title>
+    
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+    <script src="https://cdn.ckeditor.com/4.10.1/standard/ckeditor.js"></script>
+    
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css">
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap-theme.min.css">
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/js/bootstrap.min.js"></script>
+   
+    <style type="text/css">
+
+        /* The Modal (background) */
+        #joinModal {
+            display: none; /* Hidden by default */
+            position: fixed; /* Stay in place */
+            z-index: 1; /* Sit on top */
+            left: 0;
+            top: 0;
+            width: 100%; /* Full width */
+            height: 100%; /* Full height */
+            overflow: auto; /* Enable scroll if needed */
+            background-color: rgb(0,0,0); /* Fallback color */
+            background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+        }
+
+        #joinDiv {
+            background-color: #fefefe;
+            margin: 15% auto; /* 15% from the top and centered */
+            padding: 20px;
+            border: 1px solid #888;
+            width: 50%; /* Could be more or less, depending on screen size */
+        }
+
+        /* The Close Button */
+        #joinModalClose {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        #joinModalClose:hover,
+        #joinModalClose:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+
+	#wrap{
+		margin-left: auto;
+		margin-right: auto;
+		width: 90%
+	}
+	
+	
+
+	#header{
+		margin-left: 5%;
+		margin-right: 5%;
+	}
+	
+	#postDetail{
+		margin-left: auto;
+		margin-right: auto;
+		width: 85%
+		}
+
+	#myPageDiv{
+		margin: 10% auto;
+		width: 70%
+		}
+
+    </style>
+    <script type="text/javascript">
+
+        var postNumPerPage=3;
+        var pageNumPerPage=2;
+        var currentUserToken;
+        var currentUserEmail;
+        var currentUserScope;
+		var currentUserStatus;
+
+        window.onload=function(){
+        	
+            CKEDITOR.replace( 'postContent' ); //postWriteForm Editor activating
+            CKEDITOR.replace( 'postEditContent' );
+            CKEDITOR.replace( 'commentContent', {
+                height: 100
+            } );
+
+            currentUserToken = localStorage.getItem("currentUserToken");
+            currentUserEmail = localStorage.getItem("currentUserEmail");
+            currentUserScope = localStorage.getItem("currentUserScope")
+			currentUserStatus = localStorage.getItem("currentUserStatus");
+
+            console.log("현재 로그인 된 이용자의 토큰! "+currentUserToken);
+            console.log("현재 로그인 된 이용자의 메일! "+currentUserEmail);
+            console.log("현재 로그인 된 이용자의 권한! "+currentUserScope);
+            console.log("현재 로그인 된 이용자의 상태! "+currentUserStatus);
+
+            if(currentUserToken==null || currentUserEmail==null || currentUserScope==null || currentUserStatus==null){
+				$('#logout').hide();
+				$('#login').show();
+				$('#toPostWriteForm').hide();
+				$('#commentWrite').hide();
+            }else{
+                $('#currentUserEmail').text(currentUserEmail);
+                $('#logout').show();
+                $('#login').hide();
+
+                if(currentUserStatus == "DISABLE"){ //계정 정지인 회원은 쓰기 버튼 보여주지 않음
+                    $('#toPostWriteForm').hide();
+                    $('#commentWrite').hide();
+                    $('#labelForDisabledUser').html("<p> (정지된 계정입니다)</p>");
+				}
+
+                var tabs ='<li style="cursor:pointer" role="presentation" class="active" id="navBbs"><a href="">BBS</a></li>'
+                    +'<li style="cursor:pointer" role="presentation" id="navMyPage"><a onclick="javascript:toMyPage()">MyPage</a></li>';
+
+                if(currentUserScope=='ADMIN'){
+						 tabs += '<li role="presentation" style="cursor:pointer" id="navUsers"><a onclick="javascript: toUserList(1)">Users</a></li>'
+								+ '<div class="row" id="userSearchInput" hidden>'
+									+ '<div class="col-lg-3 col-md-3">'
+										+ '<div class="input-group">'
+											+ '<input type="text" class="form-control" placeholder="Search user" id="userSearchKeyword">'
+											+ '<span class="input-group-btn">'
+													+ '<button class="btn btn-default" type="button" onclick="javascript:searchUser(1)">검색</button>'
+											+ '</span>'
+										+ '</div>'
+									+'</div>'
+								+ '</div>';
+					}
+	                    tabs +=  '<div class="row" id="postSearchInput">'
+									+ '<div class="col-lg-5 col-md-5">'
+										+ '<div class="input-group">'
+											+ '<input type="text" class="form-control" placeholder="Search" id="postSearchKeyword">'
+											+ '<span class="input-group-btn">'
+												+ '<button id="searchButtonForUser" class="btn btn-default" type="button">TITLE</button>'
+												+'<button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" aria-expanded="false">'
+											    +'<span class="caret"></span>'
+											   +' <span class="sr-only">Toggle Dropdown</span>'
+											  +'</button>'
+											 +' <ul class="dropdown-menu" role="menu">'
+											   +' <li><a onclick="javascript:changeSearchToPost()">TITLE</a></li>'
+											  + ' <li><a onclick="javascript:changeSearchToWriter()">WRITER</a></li>'
+											+ ' </ul>'
+											+ '</span>'
+										+ '</div>'
+									+'</div>'
+								+ '</div>';
+
+				$('#navForSearch').html(tabs);
+            }
+
+          	  bbs(1);
+
+            //상세 화면
+			$('#detailPage').hide();
+
+            //글쓰기 화면
+  			$('#postWrite').hide();
+
+  			$('#toPostWriteForm').click(function (event) {
+                event.preventDefault();
+                $('#postWrite').show();
+                $('#detailPage').hide();
+                $('#bbs').hide()
+            });
+
+           //joinModal 관련
+           $('#joinModal').hide();
+
+           $('#toJoinForm').click(function(event){
+              event.preventDefault();
+              $('#joinModal').show();
+		   });
+
+            //modal x 클릭시 닫음
+            $('#joinModalClose').click(function(){
+                $('#joinModal').hide();
+            });
+
+            //modal 외부 클릭시 닫음 //window.onclick은 지양할것..!
+         	$('#joinModal').click(function(){
+                if (event.target == joinModal) {
+                    $('#joinModal').hide();
+                }
+			});
+
+
+        }; //window.onload  ends
+
+
+
+
+
+        function bbs(currentPage){
+            //bbs 목록
+            var listObj = "";
+            $.getJSON('http://localhost:8080/bbs?page='+currentPage+'&elementsNumberForOnePage='+postNumPerPage, function (data) {
+           //     alert("페이지 객체로 변경한 데이터 "+JSON.stringify(data));
+
+                $(data['content']).each(function (num, ele) {//첫번째 인자가 인덱스, 두번째 인자가 엘리먼트
+
+
+                    listObj += '<tr style="cursor:pointer" onclick="javascript:showDetail('+ele.postIdx+')" onmouseover="this.style.backgroundColor=\'#f1f1f1\'" onmouseout="this.style.backgroundColor=\'#ffffff\'"'
+                        +'><td hidden="hidden">' + ele.postIdx + '</td>'
+                        + '<td>' + ele.title
+                        + '</td><td>'
+                        + ele.postWriter.email + '</td>'
+                        + '<td>' + ele.postTime + '</td></tr>';
+                });
+
+                $('#bbsTable tbody').eq(1).html(listObj);
+
+                paginate(currentPage, "javascript:bbs", data, '#paging ul', data['totalElements']);
+
+
+            });
+
+        } // showing bbs list end
+
+        
+        $(document).on('click', '#searchButtonForUser', function(event){
+        	event.preventDefault();
+        	searchPost(1, $('#searchButtonForUser').text());
+        });
+
+		function searchPost(currentPostSearchPage, searchingCategory){
+                console.log("검색어 "+$('#postSearchKeyword').val());
+                console.log("검색 카테코리 "+searchingCategory);
+                
+                var keyword =  JSON.stringify({
+                	"keyword" : $('#postSearchKeyword').val(),
+                	"category" : searchingCategory
+                	});
+                
+                console.log("보내는 데이터 "+keyword);
+
+                $.ajax({
+                    type: 'Post',
+                    url: 'http://localhost:8080/bbs/search?page='+currentPostSearchPage+'&elementsNumberForOnePage='+postNumPerPage,
+                    headers: {'token': localStorage.getItem('currentUserToken')},
+                    contentType: 'application/json; charset=utf-8',
+                    data: keyword,
+                    success: function (data) {
+                        console.log("포스트 리스트를 가져옴...");
+                        var listObj = "";
+                        $(data['posts']).each(function (num, ele) {
+
+                            listObj += '<tr style="cursor:pointer" onclick="javascript:showDetail('+ele.postIdx+')" onmouseover="this.style.backgroundColor=\'#f1f1f1\'" onmouseout="this.style.backgroundColor=\'#ffffff\'"'
+                                +'><td hidden="hidden">' + ele.postIdx + '</td>'
+                                + '<td>' + ele.title
+                                + '</td><td>'
+                                + ele.postWriter.email + '</td>'
+                                + '<td>' + ele.postTime + '</td></tr>';
+                        });
+
+                        $('#bbsTable tbody').eq(1).html(listObj);
+
+                        paginate(currentPostSearchPage, "javascript:searchPost", data, '#paging ul', Object.keys(data['posts']).length);
+
+                    },
+                    error: function (data) {
+                        errorHandling(data);
+                    },
+                    complete: function (data) {
+                        $('#postSearchKeyword').val('');
+                    }
+                });
+        }//searchPost ends
+
+        
+        function changeSearchToWriter(){
+        	$('#searchButtonForUser').text('WRITER');
+        }
+        
+        function changeSearchToPost(){
+        	$('#searchButtonForUser').text('TITLE');
+        }
+        
+        
+
+		function paginate(currentPage, funcName, data, pagingUl, totalElements){
+            //bbs 페이지네이션
+			var totalPost=totalElements;
+            console.log('토탈 포스트'+ totalPost );
+            console.log("현재 페이지"+currentPage);
+
+            var totalPage = parseInt(totalPost/postNumPerPage);
+            if (totalPost%postNumPerPage!=0){totalPage = totalPage+1;}
+
+            var startPage =1;
+            if(currentPage>pageNumPerPage){
+                startPage= currentPage-(currentPage%pageNumPerPage)+1;
+                if(currentPage%pageNumPerPage==0){startPage=currentPage-pageNumPerPage+1;}
+            }
+
+            var endPage = startPage+pageNumPerPage-1;
+            if(endPage>=totalPage){endPage=totalPage;}
+
+            console.log('토탈 페이지 '+totalPage);
+
+            var pagingObj="";
+
+            if(startPage!=1){
+                pagingObj+='<li><a style="cursor:pointer" onclick="'+funcName+'('+(startPage-1)+')" aria-label="Previous">  <span aria-hidden="true">&laquo;</span> </a></li>';
+            }
+
+            for(var i=startPage; i<=endPage; i++){
+                if(i==currentPage){
+                    pagingObj+='<li><a>'+i+'</a></li>';
+                }else{
+                    pagingObj+='<li><a style="cursor:pointer" onclick="'+funcName+'('+i+')">'+i+'</a></li>';
+                }
+            }
+            if(endPage != totalPage){
+                pagingObj+='<li><a style="cursor:pointer" onclick="'+funcName+'('+(endPage+1)+')" aria-label="Next"><span aria-hidden="true">&raquo;</span> </a></li>';
+            }
+
+            $(pagingUl).eq(0).html(pagingObj);
+		}
+
+
+
+ 		function errorHandling(data) {
+
+            if (data['responseJSON']['status'] == 401) {//토큰 만료 상태 //없는 계정
+                logout();
+                alert(data['responseJSON']['message']);
+                window.location.reload();
+            }else if (data['responseJSON']['status'] == 402) { //관리자 권한 필요
+                alert(data['responseJSON']['message']);
+                window.location.reload();
+            }else if (data['responseJSON']['status'] == 403) {//정지된 계정 // 비로그인 유저와 같은 권한
+                alert(data['responseJSON']['message']);
+                window.location.reload();
+            }else if(data['responseJSON']['status'] == 406){ //가입 조건 불만족..
+                alert(data['responseJSON']['message']);
+                window.location.reload();
+            }else{
+                alert("정의하지 않은 에러.."+JSON.stringify(data));
+			}
+        }
+ 
+
+        function emailCheck(str){
+            var regExp = /[0-9a-zA-Z][_0-9a-zA-Z-]*@[_0-9a-zA-Z-]+(\.[_0-9a-zA-Z-]+){1,2}$/;
+            if (!str.match(regExp)){return false;}
+            return true;
+        }
+
+
+    </script>
+</head>
+<body>
+<div id="wrap" >
+
+<div  id="navs">
+<div class="container-fluid" id="header" style="vertical-align: middle">
+
+	<div class= "navbar-left" style="display: inline-block" >
+		<ul class="nav nav-tabs"  id="navForSearch" ></ul>
+
+	</div>
+
+	<div class= "navbar-right">
+	    <div id="login" th:include="header/login"></div>
+		<div id="logout" th:include="header/logout"></div>
+	</div>
+</div>
+</div>	
+
+	
+	
+	<div id="joinModal" th:include="header/join"></div>
+	
+<div class="container-fluid" id="bbsRelated">
+	
+	<div id="detailPage">
+	    <div id="postDetailPage" th:include="bbs/detail"></div>
+	    <div id="commentList" th:include="bbs/commentList"></div>
+	    <div id="commentWrite" th:include="bbs/commentWrite"></div>
+	</div>
+
+	<a class="twitter-timeline" data-width="220" data-height="200" href="https://twitter.com/TwitterDev?ref_src=twsrc%5Etfw">
+		Tweets by TwitterDev
+	</a>
+	<script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+
+	
+	<div id="postWrite" th:include="bbs/write"></div>
+
+		<div id="bbs" >
+			<table id="bbsTable" class="table">
+				<tr>
+					<th>제목</th><th>글쓴이</th><th>작성시간</th>
+				</tr>
+				<tbody></tbody>
+			</table>
+
+			<div id="paging" class="text-center">
+				<ul  class="pagination"></ul>
+			</div>
+
+			 <div class=" text-right">
+				<a  class="glyphicon glyphicon-plus " id="toPostWriteForm">글쓰기..</a>
+			 </div>
+		</div>
+
+	</div>
+
+	<div class="container-fluid">
+		<div id="adminPage" hidden>
+			<div id="userListPage" th:include="adminPage/userList"></div>
+		</div>
+	</div>
+
+	<div class="container-fluid">
+		<div id="myPage" th:include="myPage/myPage" hidden></div>
+	</div>
+
+	
+	</div>
+</body>
+</html>

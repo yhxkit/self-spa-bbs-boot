@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>LoginStatus</title>
+    <script type="text/javascript">
+
+        $(document).on('click', '#logout #logoutButton', function (event) {
+            event.preventDefault();
+            logout();
+
+        });
+
+        function logout(){
+            localStorage.removeItem("currentUserToken");
+            localStorage.removeItem("currentUserEmail");
+            localStorage.removeItem("currentUserScope");
+            window.location.reload();
+        }
+
+    </script>
+</head>
+<body>
+
+    <label id="currentUserEmail"></label>
+
+    <span style="display: inline-block" id="labelForDisabledUser">님 환영합니다</span>
+    <button type="button" id="logoutButton">Logout</button>
+
+</body>
+</html>

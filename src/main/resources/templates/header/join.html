@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>JoinForms</title>
+    <script type="text/javascript">
+
+        $(document).on('click', '#joinForm button', function (event) {
+            event.preventDefault();
+
+            $('.joinInputs').html("");
+
+            var email = $('#joinEmail').val();
+            var name =  $('#joinName').val();
+            var password = $('#joinPassword').val();
+            var confirmPassword =  $('#confirmPassword').val();
+
+            console.log(email+" "+ name+" " +password+" "+ confirmPassword);
+
+            if(email.trim() == "" || name.trim() == "" || password.trim() == "" || confirmPassword.trim() == ""){
+                 $('#joinRequiredError').html("<p style='color: red'>모든 항목을 입력해야 합니다</p>");
+            }else{
+                if(!emailCheck(email)){
+                    $('#joinEmailError').html("<p style='color: red'>이메일 형식에 맞춰주세요</p>");
+                }else{
+                    if(password!=confirmPassword){
+                      $('#joinPasswordConfirmError').html("<p style='color: red'>비밀번호가 일치하지 않습니다</p>");
+                    }else{
+                        signUp();
+                    }
+                }
+            }
+        });
+
+
+        function duplicatedEmailCheck(){
+            $('.emailCheckInputs').html("");
+
+            var signUpData = $('#joinForm').serialize();
+            var email = $('#joinEmail').val();
+
+            if(email.trim() == ""){
+                $('#joinRequiredError').html("<p style='color: red'>이메일을 입력해야 합니다</p>");
+            }else {
+                if (!emailCheck(email)) {
+                    $('#joinEmailError').html("<p style='color: red'>이메일 형식에 맞춰주세요</p>");
+                }else{
+
+                    $.post('checkEmail', signUpData, function (data) {
+                        $('#joinEmailError').html("<p>"+data['message']+"</p>");
+                    }).done(function (data) {
+                    }).fail(function (data) {
+                    	errorHandling(data);
+                    });
+                }
+            }
+
+        }
+
+        function signUp() {
+            var signUpData = $('#joinForm').serialize();
+            console.log("가입하려는 유저 "+signUpData);
+
+            $.post('join', signUpData, function (data) {
+                if(data['result'] == 'fail'){
+                    $('#joinRequiredError').html("<p style='color: red'>"+data['message']+"</p>");
+                }else {
+                    alert(data['message']);
+                    window.location.reload();
+                }
+            }).done(function (data, status, response) {
+            }).fail(function (data) {
+                errorHandling(data);
+            });
+
+        }
+
+    </script>
+</head>
+<body>
+    <div id="joinDiv">
+            <form id="joinForm">
+                <span id="joinModalClose">&times;</span>
+
+                <input type="email" id="joinEmail" name="email" placeholder="이메일" />
+                <a style="cursor:pointer" class="glyphicon glyphicon-user" id="duplicatedEmailCheck" onclick="duplicatedEmailCheck()">중복체크</a>
+                <span id="joinEmailError" class="joinInputs emailCheckInputs" style="display: inline-block"></span>
+                <br/>
+                <input type="text" id="joinName" name="name" placeholder="이름" />
+                <span id="joinNameError" class="joinInputs" style="display: inline-block"></span>
+                <br/>
+                <input type="password" id="joinPassword" name="password" placeholder="비번" />
+                <span id="joinPasswordError" class="joinInputs" style="display: inline-block"></span>
+                <br/>
+                <input type="password" id="confirmPassword" name="confirmPassword" placeholder="비번 확인" />
+                <span id="joinPasswordConfirmError"  class="joinInputs" style="display: inline-block"></span>
+                <br/>
+                <button type="submit" id="joinButton">가입하기</button>
+                <span id="joinRequiredError" class="joinInputs emailCheckInputs" style="display: inline-block"></span>
+            </form>
+    </div>
+
+</body>
+</html>

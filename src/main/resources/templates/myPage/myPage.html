@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>myPage</title>
+    <script type="text/javascript">
+
+        function toMyPage(){
+            $('#adminPage').hide();
+            $('#userSearchInput').hide();
+            $('#postSearchInput').hide();
+            $('#bbsRelated').hide();
+            $('#myPage').show();
+            $('#navBbs').removeAttr("class")
+            $('#navUsers').removeAttr("class")
+            $('#navMyPage').attr('class', 'active');
+
+            $('.myInfoForEdit').hide();
+            $('.myInfo').show();
+
+            $('#passwordToEditMyInfo').val("");
+            $('#changedPassword').val("");
+            $('#changedPasswordConfirm').val("");
+
+            $.ajax({
+                url: 'http://localhost:8080/myPage',
+                type: 'post',
+                headers: {'token': localStorage.getItem('currentUserToken')},
+                success: function(data){
+                    if (data['result']=='fail'){
+                        alert(data['message']);
+                        window.location.reload();
+                    }else {
+                        $('#myPageDiv #email').text(data.data.email);
+                        $('#myPageDiv #name').text(data.data.name);
+                        $('#myPageDiv #accountCreatedTime').text(data.data.accountCreatedTime);
+                        $('#myPageDiv #status').text(data.data.status);
+                        $('#myPageDiv #auth').text(data.data.auth);
+
+                        $('#changedName').val(data.data.name);
+                    }
+
+                },
+                error: function(data){
+                    errorHandling(data);
+                }
+            });
+        }
+
+
+        function toUserInfoEdit(){
+            var data = JSON.stringify({
+                "password" : $('#passwordToEditMyInfo').val()
+            });
+
+            $.ajax({
+                url: 'http://localhost:8080/myPage/update',
+                type: 'post',
+                data: data, // 컨텐츠 타입 빼고 {"password" : $('#passwordToEditMyInfo').val()} 로 그냥 js 객체로 보내면 @RequestBody랑 dto 필요없음
+                contentType: 'application/json; charset=utf-8',
+                headers: {'token': localStorage.getItem('currentUserToken')},
+                success: function(data){
+                    if(data['result']=='fail'){
+                        alert(data['message']);
+                    }else{
+                        $('.myInfo').hide();
+                        $('.myInfoForEdit').show();
+                    }
+                },
+                error: function(data){
+                    errorHandling(data);
+                }
+            });
+        }
+
+        function deleteAccount(){
+            $.ajax({
+                url: 'http://localhost:8080/myPage/deleteAccount',
+                type: 'delete',
+                headers: {'token': localStorage.getItem('currentUserToken')},
+                success: function(data){
+                    if(data['result']=='fail'){
+                        alert(data['message']);
+                    }else{
+                        logout();
+                    }
+                },
+                error: function(data){
+                    errorHandling(data);
+                }
+            });
+        }
+
+        function editMyInfo(){
+            var data = JSON.stringify({
+                "name" : $("#changedName").val(),
+                "password" : $('#changedPassword').val()
+            });
+
+
+            $.ajax({
+                url: 'http://localhost:8080/myPage/update',
+                type: 'put', //rest(put, delete)은 json써서 dto로 처리해주지 않으면 엔티티에 매핑안됨
+                data: data,
+                contentType: 'application/json; charset=utf-8',
+                headers: {'token': localStorage.getItem('currentUserToken')},
+                success: function(data){
+                    if(data['result']=='fail'){
+                        alert(data['message']);
+                    }else{
+                        toMyPage();
+                    }
+                },
+                error: function(data){
+                    errorHandling(data);
+                }
+            });
+
+        }
+
+
+        function checkBeforeEdit(){
+            $('#editError').html("");
+
+            var name =  $("#changedName").val();
+            var password = $('#changedPassword').val();
+            var confirmPassword = $('#changedPasswordConfirm').val();
+
+            if(name.trim() == "" || password.trim() == "" || confirmPassword.trim() == ""){
+                $('#editError').html("<p style='color: red'>모든 항목을 입력해야 합니다</p>");
+            }else{
+                if(password!=confirmPassword){
+                     $('#editError').html("<p style='color: red'>비밀번호가 일치하지 않습니다</p>");
+                 }else{
+                    $('#editError').html("");
+                    editMyInfo();
+                }
+
+            }
+        }
+
+    </script>
+</head>
+<body>
+
+    <div id="myPageDiv" class="text-center">
+        <span id="email"></span>
+        <span>님의 정보 </span>
+        <br/>
+        <label class="myInfo">이름</label>
+        <span class="myInfo" id="name"></span>
+
+        <br/>
+        <label class="myInfo">가입일 </label>
+        <span class="myInfo" id="accountCreatedTime"></span>
+        <br/>
+        <label class="myInfo">권한</label>
+        <span class="myInfo" id="auth"></span>
+        <br/>
+        <label class="myInfo">상태</label>
+        <span class="myInfo" id="status"></span>
+        <br/>
+        <br/>
+
+
+
+        <div class="row text-center" style="margin: auto">
+            <div class="col-lg-6 col-md-6" >
+
+
+                <div id="myInfoEditInputs" class="myInfoForEdit" hidden>
+                    <div class="input-group" >
+                        <span class="input-group-addon">이름</span>
+                        <input type="text" class="form-control" name="name" id="changedName" placeholder="이름" aria-describedby="basic-addon1">
+                    </div>
+
+
+                    <div class="input-group">
+                        <span class="input-group-addon" >비밀번호</span>
+                        <input type="password" class="form-control" id="changedPassword" name="password" placeholder="비밀번호 입력" aria-describedby="basic-addon1">
+                    </div>
+
+                    <div class="input-group">
+                        <span class="input-group-addon" >비밀번호 확인</span>
+                        <input type="password" class="form-control" id="changedPasswordConfirm" placeholder="비밀번호 확인" aria-describedby="basic-addon1">
+                    </div>
+                    <span id="editError"></span>
+                </div>
+
+
+                <div class="input-group myInfo"  id="showConfirmingPasswordInput">
+                    <input type="password" id="passwordToEditMyInfo" class="form-control" placeholder="정보를 수정하려면 비밀번호를 입력하세요">
+                    <span class="input-group-btn">
+                    <button class="btn btn-default" type="button" onclick="javascript:toUserInfoEdit()"> 확인</button>
+                  </span>
+                </div>
+
+            </div><!-- /.col-lg-6 -->
+        </div><!-- /.row -->
+
+        <br/>
+        <div class="text-center myInfoForEdit" style="cursor:pointer" id="editMyInfoButton" hidden>
+            <button onclick="javascript:checkBeforeEdit()">수정하기</button>
+        </div>
+        <div class="text-right myInfoForEdit" id="deleteAccountButton" style="cursor:pointer" hidden>
+            <p onclick="javascript:deleteAccount()" class="glyphicon glyphicon-remove-sign" > 계정삭제 </p>
+        </div>
+
+
+
+
+    </div>
+
+</body>
+</html>
